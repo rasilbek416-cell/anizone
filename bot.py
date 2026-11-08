@@ -1,5 +1,5 @@
 """
-🔮 KAGE DUB — ANIME TELEGRAM BOT (bitta fayl)
+🔮 ANIZONE — ANIME TELEGRAM BOT (bitta fayl)
 =============================================
 aiogram 3.31 · SQLAlchemy async · PostgreSQL (yoki SQLite) · Render (webhook)
 
@@ -15,9 +15,9 @@ Muhit o'zgaruvchilari (Render → Environment yoki lokal .env fayl):
     BOT_TOKEN            @BotFather tokeni                      (MAJBURIY)
     OWNER_ID             8318241400                              (MAJBURIY)
     DATABASE_URL         Render PostgreSQL "Internal Database URL" (bo'sh bo'lsa SQLite)
-    DEFAULT_SUB_CHANNEL  @kagedub1  (birinchi majburiy kanal; bot u yerda ADMIN bo'lishi shart)
+    DEFAULT_SUB_CHANNEL  @anizone  (birinchi majburiy kanal; bot u yerda ADMIN bo'lishi shart)
     ADMIN_IDS            ixtiyoriy, vergul bilan
-    BOT_NAME / BOT_USERNAME / TIMEZONE   ixtiyoriy (Kage Dub / Kage_Dub_bot / Asia/Tashkent)
+    BOT_NAME / BOT_USERNAME / TIMEZONE   ixtiyoriy (AniZone / AniZone_bot / Asia/Tashkent)
     BASE_URL             bo'sh qoldiring: Render RENDER_EXTERNAL_URL ni o'zi beradi -> webhook rejimi
     PYTHON_VERSION       3.12.3  (faqat Render'da)
 
@@ -64,7 +64,7 @@ from typing import Any, Awaitable, Callable
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 from zoneinfo import ZoneInfo
 
-logger = logging.getLogger("kage_dub")
+logger = logging.getLogger("anizone")
 
 
 # ════════════════════════════════════════════════════════════════════════════
@@ -356,8 +356,8 @@ def get_config() -> Config:
         owner_id=int(owner),
         admin_ids=_int_set(os.getenv("ADMIN_IDS", "")),
         database_url=normalize_db_url(os.getenv("DATABASE_URL", "")),
-        bot_name=os.getenv("BOT_NAME", "Kage Dub").strip(),
-        bot_username=os.getenv("BOT_USERNAME", "Kage_Dub_bot").strip().lstrip("@"),
+        bot_name=os.getenv("BOT_NAME", "AniZone").strip(),
+        bot_username=os.getenv("BOT_USERNAME", "AniZone_bot").strip().lstrip("@"),
         default_sub_channel=os.getenv("DEFAULT_SUB_CHANNEL", "").strip(),
         base_url=base_url,
         webhook_secret=secret,
@@ -3490,7 +3490,7 @@ async def cb_tpl_show(cb: CallbackQuery) -> None:
 @channels_router.callback_query(F.data == "tpligram")
 async def cb_instagram(cb: CallbackQuery, state: FSMContext) -> None:
     await state.set_state(SetInstagram.url)
-    await render(cb, "📸 Instagram havolasini yuboring (masalan: <code>https://instagram.com/kagedub</code>):",
+    await render(cb, "📸 Instagram havolasini yuboring (masalan: <code>https://instagram.com/anizone</code>):",
                  cancel_kb())
     await cb.answer()
 
@@ -3955,7 +3955,7 @@ async def load_cache(bot: Bot, cfg: Config) -> None:
 
 
 async def _seed_default_channel(bot: Bot, cfg: Config) -> None:
-    """DEFAULT_SUB_CHANNEL (masalan @kagedub1) ni birinchi marta majburiy obunaga qo'shadi."""
+    """DEFAULT_SUB_CHANNEL (masalan @anizone) ni birinchi marta majburiy obunaga qo'shadi."""
     if not cfg.default_sub_channel or setting("default_channel_seeded") == "1":
         return
     ref: int | str = cfg.default_sub_channel
