@@ -25,10 +25,6 @@ Render: Build `pip install -r requirements.txt` | Start `python main.py` | Healt
 Monitor (UptimeRobot) har 5 daqiqada https://SIZNING-NOM.onrender.com/health ni tekshirsin.
 Lokal sinov: BASE_URL bo'sh bo'lsa polling rejimida ishlaydi.
 
-Premium (custom) emojilar: EMOJIS lug'atiga @Stickers pack'ingizdagi custom_emoji_id larni yozing.
-    Ularni olish: /emojiids <pack_nomi>  (faqat owner) yoki get_pack_emoji_ids() funksiyasi.
-    O'chirish: CUSTOM_EMOJI=0 (muhit o'zgaruvchisi).
-
 Fayl tuzilishi (yuqoridan pastga, tartibni o'zgartirmang):
     matnlar → sozlamalar → baza → yordamchilar → tugmalar → xizmatlar → middleware
     → handlerlar → ishga tushirish
@@ -69,81 +65,6 @@ from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 from zoneinfo import ZoneInfo
 
 logger = logging.getLogger("anizone")
-
-
-# ════════════════════════════════════════════════════════════════════════════
-# PREMIUM (CUSTOM) EMOJILAR
-# ════════════════════════════════════════════════════════════════════════════
-
-# O'zingizning @Stickers pack'ingizdan olingan custom_emoji_id larni shu yerga qo'ying
-EMOJIS = {
-    # Xabar sarlavhasi (Admin paneli)
-    "wrench": "5368324170671202369",       # 🛠️ Admin paneli
-    "user": "5368324170671202370",         # 👤 Rolingiz
-    "crown": "5368324170671202289",        # 👑 Owner / Top
-    "point_down": "5368324170671202371",   # 👇 Tanlang
-
-    # Admin paneli tugmalari
-    "plane": "5368324170671202294",        # ✈️ Anime qo'shish
-    "books": "5368324170671202361",        # 📚 Animelar
-    "masks": "5368324170671202362",        # 🎭 Janrlar
-    "postbox": "5368324170671202363",      # 📮 Post sozlamalarim
-    "stats": "5368324170671202318",        # 📊 Statistika
-    "broadcast": "5368324170671202316",    # 📣 Xabar yuborish
-    "force_sub": "5368324170671202368",    # 📢 Majburiy obuna
-    "satellite": "5368324170671202364",    # 📡 Post kanallari
-    "officer": "5368324170671202365",      # 👮 Adminlar
-    "ban": "5368324170671202327",          # 🚫 Ban / Unban
-    "diamond": "5368324170671202295",      # 💎 VIP boshqaruvi / VIP
-    "puzzle": "5368324170671202366",       # 🧩 Post shabloni
-    "ticket": "5368324170671202346",       # 🎟️ Stikerlar
-    "clock": "5368324170671202367",        # 🕒 Rejalashtirilgan
-
-    # Asosiy menyu va Qidiruv tugmalari
-    "search": "5368324170671202306",       # 🔍 Anime Izlash
-    "settings": "5368324170671202319",     # ⚙️ Sozlamalar
-    "close": "5368324170671202299",        # ✖️ Admin panel
-    "film_reel": "5368324170671202286",    # 🎞️ Tasodifiy anime
-    "list_box": "5368324170671202287",     # 📋 Nom orqali / Eng Yangi
-    "chat_code": "5368324170671202288",    # 💬 Kod orqali
-    "imdb": "5368324170671202290",         # 🎬 Eng eski (IMDb)
-    "bookmark": "5368324170671202291",     # 🔖 Janr orqali
-    "clapper": "5368324170671202292",      # 🎬 Rasm orqali / Barcha animelar
-    "home": "5368324170671202293",         # 🏠 Orqaga
-}
-
-# Tugmalardagi custom emoji (icon_custom_emoji_id). Telegram rad etsa, avtomatik o'chadi.
-_CUSTOM_EMOJI_ON = os.getenv("CUSTOM_EMOJI", "1").strip().lower() not in ("0", "false", "no", "off")
-_BUTTON_ICONS_OK = True
-
-
-def tg_emoji(key: str, fallback: str = "•") -> str:
-    """Xabar matni ichida <tg-emoji> chiqarish uchun (parse_mode='HTML')."""
-    emoji_id = EMOJIS.get(key, "") if _CUSTOM_EMOJI_ON else ""
-    if not emoji_id:
-        return fallback
-    return f'<tg-emoji emoji-id="{emoji_id}">{fallback}</tg-emoji>'
-
-
-def button_icon(key: str | None) -> str | None:
-    """Tugma uchun custom_emoji_id (o'chirilgan yoki topilmasa None)."""
-    if not key or not _CUSTOM_EMOJI_ON or not _BUTTON_ICONS_OK:
-        return None
-    return EMOJIS.get(key) or None
-
-
-async def get_pack_emoji_ids(bot: Bot, pack_short_name: str) -> list[str]:
-    """
-    @Stickers ga yuklagan pack nomini bering (masalan: 'animeuz_icons_by_bot'),
-    barcha stikerlarning custom_emoji_id larini konsolga chiqarib beradi.
-    """
-    sticker_set = await bot.get_sticker_set(name=pack_short_name)
-    lines: list[str] = []
-    for i, st in enumerate(sticker_set.stickers, start=1):
-        line = f'{i}. emoji={st.emoji} -> custom_emoji_id="{st.custom_emoji_id}"'
-        print(line)
-        lines.append(line)
-    return lines
 
 
 # ════════════════════════════════════════════════════════════════════════════
@@ -1478,14 +1399,8 @@ async def send_slot_sticker(bot: Bot, chat_id: int, slot: str) -> None:
 # ════════════════════════════════════════════════════════════════════════════
 
 def B(text: str, data: str | None = None, url: str | None = None,
-      style: str | None = None, emoji: str | None = None) -> InlineKeyboardButton:
-    """emoji — EMOJIS kaliti. Custom emoji yoqilgan bo'lsa, matn boshidagi oddiy emoji olib tashlanadi."""
-    icon = button_icon(emoji)
-    if icon:
-        text = text.split(" ", 1)[1] if " " in text else text
+      style: str | None = None) -> InlineKeyboardButton:
     kwargs: dict = {"text": text}
-    if icon:
-        kwargs["icon_custom_emoji_id"] = icon
     if url:
         kwargs["url"] = url
     else:
@@ -1626,23 +1541,23 @@ PER_PAGE = 8
 
 def panel_kb(owner: bool) -> InlineKeyboardMarkup:
     rows = [
-        [B("✈️ Anime qo'shish", "adm:addanime", style="success", emoji="plane"),
-         B("📚 Animelar", "adm:anime:0", style="primary", emoji="books")],
-        [B("🎭 Janrlar", "adm:genres", emoji="masks"), B("📮 Post sozlamalarim", "adm:pset", emoji="postbox")],
+        [B("➕ Anime qo'shish", "adm:addanime", style="success"),
+         B("📚 Animelar", "adm:anime:0", style="primary")],
+        [B("🎭 Janrlar", "adm:genres"), B("📮 Post sozlamalarim", "adm:pset")],
     ]
     if owner:
         rows += [
-            [B("📊 Statistika", "adm:stats", emoji="stats"), B("📣 Xabar yuborish", "adm:bc", emoji="broadcast")],
-            [B("📢 Majburiy obuna", "adm:ch:sub", emoji="force_sub"), B("📡 Post kanallari", "adm:ch:post", emoji="satellite")],
-            [B("👮 Adminlar", "adm:admins", emoji="officer"), B("🚫 Ban / Unban", "adm:ban", emoji="ban")],
-            [B("💎 VIP boshqaruvi", "adm:vip", emoji="diamond"), B("🧩 Post shabloni", "adm:tpl", emoji="puzzle")],
-            [B("🎟 Stikerlar", "adm:stk", emoji="ticket"), B("🕒 Rejalashtirilgan", "adm:sched", emoji="clock")],
+            [B("📊 Statistika", "adm:stats", style="primary"), B("📣 Xabar yuborish", "adm:bc", style="primary")],
+            [B("📢 Majburiy obuna", "adm:ch:sub"), B("📡 Post kanallari", "adm:ch:post")],
+            [B("👮 Adminlar", "adm:admins"), B("🚫 Ban / Unban", "adm:ban", style="danger")],
+            [B("💎 VIP boshqaruvi", "adm:vip", style="success"), B("🧩 Post shabloni", "adm:tpl")],
+            [B("🎟 Stikerlar", "adm:stk"), B("🕒 Rejalashtirilgan", "adm:sched")],
         ]
     return markup(rows)
 
 
 def back_panel() -> list:
-    return [B("⬅️ Panel", "adm:main", emoji="home")]
+    return [B("⬅️ Panel", "adm:main")]
 
 
 def admin_anime_list_kb(items: list[Anime], page: int, pages: int) -> InlineKeyboardMarkup:
@@ -2617,64 +2532,27 @@ panel_router.callback_query.filter(IsStaff())
 
 
 def panel_text(uid: int) -> str:
-    role = f"{tg_emoji('crown', '👑')} Owner" if is_owner(uid) else "🛡 Admin"
-    return (f"{tg_emoji('wrench', '🛠')} <b>Admin paneli</b>\n\n"
-            f"{tg_emoji('user', '👤')} Rolingiz: <b>{role}</b>\n\n"
-            f"Kerakli bo'limni tanlang {tg_emoji('point_down', '👇')}")
-
-
-def _disable_button_icons(exc: Exception) -> bool:
-    """Telegram tugmadagi custom emojini rad etsa, ularni o'chiradi (True qaytaradi)."""
-    global _BUTTON_ICONS_OK
-    if _BUTTON_ICONS_OK and ("icon" in str(exc).lower() or "emoji" in str(exc).lower()):
-        _BUTTON_ICONS_OK = False
-        logger.warning("Tugmalardagi custom emoji rad etildi, oddiy emoji ishlatiladi: %s", exc)
-        return True
-    return False
+    role = "👑 Owner" if is_owner(uid) else "🛡 Admin"
+    return (
+        "🛠 <b>ADMIN PANELI</b>\n"
+        "━━━━━━━━━━━━━━━━━━\n"
+        f"👤 Rolingiz: <b>{role}</b>\n"
+        "━━━━━━━━━━━━━━━━━━\n\n"
+        "Kerakli bo'limni tanlang 👇"
+    )
 
 
 @panel_router.message(Command("admin"))
 @panel_router.message(F.text == PANEL_BTN)
 async def open_panel(message: Message, state: FSMContext) -> None:
     await state.clear()
-    uid = message.from_user.id
-    try:
-        await message.answer(panel_text(uid), reply_markup=panel_kb(is_owner(uid)))
-    except TelegramBadRequest as exc:
-        if not _disable_button_icons(exc):
-            raise
-        await message.answer(panel_text(uid), reply_markup=panel_kb(is_owner(uid)))
-
-
-@panel_router.message(Command("emojiids"), IsOwner())
-async def cmd_emoji_ids(message: Message, command: CommandObject, bot: Bot) -> None:
-    """/emojiids <pack_nomi> — pack'dagi custom_emoji_id larni chiqaradi."""
-    if not command.args:
-        await message.answer("Ishlatilishi: <code>/emojiids pack_nomi</code>")
-        return
-    try:
-        lines = await get_pack_emoji_ids(bot, command.args.strip())
-    except TelegramAPIError as exc:
-        await message.answer(f"❌ Pack topilmadi: <code>{esc(str(exc))}</code>")
-        return
-    text = "\n".join(lines) or "Pack bo'sh."
-    for i in range(0, len(text), 3500):
-        await message.answer(f"<pre>{esc(text[i:i + 3500])}</pre>")
+    await message.answer(panel_text(message.from_user.id), reply_markup=panel_kb(is_owner(message.from_user.id)))
 
 
 @panel_router.callback_query(F.data == "adm:main")
 async def cb_panel(cb: CallbackQuery, state: FSMContext) -> None:
     await state.clear()
-    uid = cb.from_user.id
-    try:
-        await cb.message.edit_text(panel_text(uid), reply_markup=panel_kb(is_owner(uid)))
-    except TelegramBadRequest as exc:
-        if "message is not modified" in str(exc):
-            pass
-        elif _disable_button_icons(exc):
-            await render(cb, panel_text(uid), panel_kb(is_owner(uid)))
-        else:
-            await render(cb, panel_text(uid), panel_kb(is_owner(uid)))
+    await render(cb, panel_text(cb.from_user.id), panel_kb(is_owner(cb.from_user.id)))
     await cb.answer()
 
 
