@@ -15,11 +15,11 @@ Muhit o'zgaruvchilari (Render → Environment yoki lokal .env fayl):
     BOT_TOKEN            @BotFather tokeni                      (MAJBURIY)
     OWNER_ID             8318241400                              (MAJBURIY)
     DATABASE_URL         Render PostgreSQL "Internal Database URL" (bo'sh bo'lsa SQLite)
-    DEFAULT_SUB_CHANNEL  @anizone  (birinchi majburiy kanal; bot u yerda ADMIN bo'lishi shart)
+    DEFAULT_SUB_CHANNEL  @AniZone_UzBot  (birinchi majburiy kanal; bot u yerda ADMIN bo'lishi shart)
     ADMIN_IDS            ixtiyoriy, vergul bilan
     BOT_NAME / BOT_USERNAME / TIMEZONE   ixtiyoriy (AniZone / AniZone_bot / Asia/Tashkent)
     BASE_URL             bo'sh qoldiring: Render RENDER_EXTERNAL_URL ni o'zi beradi -> webhook rejimi
-    PYTHON_VERSION       3.12.3  (faqat Render'da)
+    PYTHON_VERSION       3.14.0  (faqat Render'da)
 
 Render: Build `pip install -r requirements.txt` | Start `python main.py` | Health Check Path `/health`
 Monitor (UptimeRobot) har 5 daqiqada https://SIZNING-NOM.onrender.com/health ni tekshirsin.
@@ -71,7 +71,7 @@ logger = logging.getLogger("anizone")
 # MATNLAR (uz / ru)
 # ════════════════════════════════════════════════════════════════════════════
 
-PANEL_BTN = "🛠 Admin panel"
+PANEL_BTN = "✖️ Admin panel"
 
 TEXTS: dict[str, dict[str, str]] = {
     "uz": {
@@ -95,6 +95,20 @@ TEXTS: dict[str, dict[str, str]] = {
         "btn_fav": "⭐ Sevimlilar",
         "btn_vip": "💎 VIP",
         "btn_lang": "🌐 Til",
+        "btn_find": "🔍 Anime Izlash",
+        "btn_settings": "⚙️ Sozlamalar",
+        "find_title": "🔍 <b>Anime Izlash Bo'limi</b>\n\nQidiruv turini tanlang:",
+        "find_by_name": "📋 Nom orqali",
+        "find_by_code": "💬 Kod orqali",
+        "find_top": "👑 Top",
+        "find_new": "📃 Eng Yangi",
+        "find_old": "🏷 Eng eski",
+        "find_genre": "🔖 Janr orqali",
+        "find_all": "🎬 Barcha animelar",
+        "find_back": "🏠 Orqaga",
+        "find_top_title": "👑 <b>Top animelar</b>\n\nKerakli animeni tanlang 👇",
+        "find_new_title": "📃 <b>Eng yangi animelar</b>\n\nKerakli animeni tanlang 👇",
+        "find_old_title": "🏷 <b>Eng eski animelar</b>\n\nKerakli animeni tanlang 👇",
         "list_title": "🎬 <b>Barcha animelar</b> — {total} ta\n\nKerakli animeni tanlang 👇",
         "list_empty": "😔 Hozircha animelar yo'q. Tez orada qo'shiladi!",
         "search_prompt": (
@@ -184,6 +198,20 @@ TEXTS: dict[str, dict[str, str]] = {
         "btn_fav": "⭐ Избранное",
         "btn_vip": "💎 VIP",
         "btn_lang": "🌐 Язык",
+        "btn_find": "🔍 Поиск аниме",
+        "btn_settings": "⚙️ Настройки",
+        "find_title": "🔍 <b>Раздел поиска аниме</b>\n\nВыберите тип поиска:",
+        "find_by_name": "📋 По названию",
+        "find_by_code": "💬 По коду",
+        "find_top": "👑 Топ",
+        "find_new": "📃 Новые",
+        "find_old": "🏷 Старые",
+        "find_genre": "🔖 По жанру",
+        "find_all": "🎬 Все аниме",
+        "find_back": "🏠 Назад",
+        "find_top_title": "👑 <b>Топ аниме</b>\n\nВыберите аниме 👇",
+        "find_new_title": "📃 <b>Новые аниме</b>\n\nВыберите аниме 👇",
+        "find_old_title": "🏷 <b>Старые аниме</b>\n\nВыберите аниме 👇",
         "list_title": "🎬 <b>Все аниме</b> — {total} шт.\n\nВыберите аниме 👇",
         "list_empty": "😔 Пока аниме нет. Скоро добавим!",
         "search_prompt": (
@@ -277,7 +305,7 @@ def variants(key: str) -> set[str]:
 
 # Menyu tugmalari matnlari: to'lov chekini kutayotgan holatda ham ishlashi uchun kerak
 MENU_TEXTS = (variants("btn_animes") | variants("btn_search") | variants("btn_genres")
-              | variants("btn_fav") | variants("btn_lang"))
+              | variants("btn_fav") | variants("btn_lang") | variants("btn_find") | variants("btn_settings"))
 
 _bg_tasks: set[asyncio.Task] = set()
 
@@ -795,9 +823,10 @@ class repo:
 
 
     @staticmethod
-    async def list_anime(offset: int, limit: int) -> list[Anime]:
+    async def list_anime(offset: int, limit: int, oldest: bool = False) -> list[Anime]:
         async with SessionLocal() as s:
-            rows = await s.scalars(select(Anime).order_by(Anime.id.desc()).offset(offset).limit(limit))
+            order = Anime.id.asc() if oldest else Anime.id.desc()
+            rows = await s.scalars(select(Anime).order_by(order).offset(offset).limit(limit))
             return list(rows)
 
 
@@ -1448,12 +1477,9 @@ def lang_kb(payload: str = "") -> InlineKeyboardMarkup:
 
 def main_menu(lang: str, staff: bool) -> ReplyKeyboardMarkup:
     kb = ReplyKeyboardBuilder()
-    kb.row(KeyboardButton(text=t(lang, "btn_animes"), style="primary"),
-           KeyboardButton(text=t(lang, "btn_search"), style="primary"))
-    kb.row(KeyboardButton(text=t(lang, "btn_genres"), style="primary"),
-           KeyboardButton(text=t(lang, "btn_fav"), style="primary"))
-    kb.row(KeyboardButton(text=t(lang, "btn_vip"), style="success"),
-           KeyboardButton(text=t(lang, "btn_lang")))
+    kb.row(KeyboardButton(text=t(lang, "btn_find"), style="primary"))
+    kb.row(KeyboardButton(text=t(lang, "btn_vip"), style="success"))
+    kb.row(KeyboardButton(text=t(lang, "btn_settings")))
     if staff:
         kb.row(KeyboardButton(text=PANEL_BTN, style="danger"))
     return kb.as_markup(resize_keyboard=True, input_field_placeholder=t(lang, "menu_hint"))
@@ -1493,6 +1519,16 @@ def genres_kb(genres: list[Genre]) -> InlineKeyboardMarkup:
     if row:
         rows.append(row)
     return markup(rows)
+
+
+def find_kb(lang: str) -> InlineKeyboardMarkup:
+    return markup([
+        [B(t(lang, "find_by_name"), "fd:search"), B(t(lang, "find_by_code"), "fd:search")],
+        [B(t(lang, "find_top"), "fd:top"), B(t(lang, "find_new"), "fd:new"), B(t(lang, "find_old"), "fd:old")],
+        [B(t(lang, "find_genre"), "gl")],
+        [B(t(lang, "find_all"), "al:0")],
+        [B(t(lang, "find_back"), "fd:back")],
+    ])
 
 
 def anime_kb(anime_id: int, eps: list[int], page: int, fav: bool, lang: str) -> InlineKeyboardMarkup:
@@ -1541,7 +1577,7 @@ PER_PAGE = 8
 
 def panel_kb(owner: bool) -> InlineKeyboardMarkup:
     rows = [
-        [B("🎬 Anime qo'shish", "adm:addanime", style="success"),
+        [B("✈️ Anime qo'shish", "adm:addanime", style="success"),
          B("📚 Animelar", "adm:anime:0", style="primary")],
         [B("🎭 Janrlar", "adm:genres"), B("📮 Post sozlamalarim", "adm:pset")],
     ]
@@ -1572,9 +1608,9 @@ def admin_anime_list_kb(items: list[Anime], page: int, pages: int) -> InlineKeyb
 
 def anime_admin_kb(anime_id: int, owner: bool) -> InlineKeyboardMarkup:
     rows = [
-        [B("➕ Qism qo'shish", f"aep:add:{anime_id}", style="success"),
+        [B("💎 Qism qo'shish", f"aep:add:{anime_id}", style="success"),
          B("📼 Qismlar", f"aep:list:{anime_id}:0", style="primary")],
-        [B("✏️ Tahrirlash", f"aed:{anime_id}"), B("📮 Post qilish", f"apost:{anime_id}")],
+        [B("🔒 Tahrirlash", f"aed:{anime_id}"), B("📞 Post qilish", f"apost:{anime_id}")],
         [B("👁 Foydalanuvchi ko'rinishi", f"anu:{anime_id}")],
     ]
     if owner:
@@ -1620,7 +1656,7 @@ def episodes_admin_kb(anime_id: int, eps: list[int], page: int) -> InlineKeyboar
     nav = pager(f"aep:list:{anime_id}", page, max(1, -(-len(eps) // EP_PER_PAGE)))
     if nav:
         rows.append(nav)
-    rows.append([B("➕ Qism qo'shish", f"aep:add:{anime_id}", style="success")])
+    rows.append([B("💎 Qism qo'shish", f"aep:add:{anime_id}", style="success")])
     rows.append([B("⬅️ Orqaga", f"aa:{anime_id}")])
     return markup(rows)
 
@@ -2124,6 +2160,47 @@ async def cb_all_page(cb: CallbackQuery) -> None:
     await cb.answer()
 
 
+# ───────────────────────────── Anime Izlash bo'limi ─────────────────────────────
+@user_router.message(F.text.in_(variants("btn_find")))
+async def menu_find(message: Message, state: FSMContext) -> None:
+    await state.clear()
+    lang = lang_of(message.from_user.id)
+    await message.answer(t(lang, "find_title"), reply_markup=find_kb(lang))
+
+
+async def _find_list(action: str, lang: str):
+    if action == "top":
+        items, title = await repo.top_anime(10), t(lang, "find_top_title")
+    elif action == "old":
+        items, title = await repo.list_anime(0, 10, oldest=True), t(lang, "find_old_title")
+    else:
+        items, title = await repo.list_anime(0, 10), t(lang, "find_new_title")
+    if not items:
+        return t(lang, "list_empty"), None
+    return title, anime_list_kb(items, 0, 1, "al")
+
+
+@user_router.callback_query(F.data.startswith("fd:"))
+async def cb_find(cb: CallbackQuery, state: FSMContext) -> None:
+    uid = cb.from_user.id
+    lang = lang_of(uid)
+    action = cb.data.split(":")[1]
+    if action == "search":
+        await state.set_state(SearchSt.query)
+        await cb.message.answer(t(lang, "search_prompt"))
+    elif action == "back":
+        await state.clear()
+        try:
+            await cb.message.delete()
+        except TelegramBadRequest:
+            pass
+        await cb.message.answer(t(lang, "menu_hint"), reply_markup=main_menu(lang, is_staff(uid)))
+    elif action in ("top", "new", "old"):
+        text, markup_ = await _find_list(action, lang)
+        await render(cb, text, markup_)
+    await cb.answer()
+
+
 # ───────────────────────────── Janrlar ─────────────────────────────
 async def _genres_view(lang: str):
     genres = await repo.list_genres()
@@ -2352,7 +2429,7 @@ async def cmd_menu(message: Message, state: FSMContext, bot: Bot) -> None:
     await proceed(bot, message.chat.id, message.from_user, lang_of(message.from_user.id), "")
 
 
-@start_router.message(F.text.in_(variants("btn_lang")))
+@start_router.message(F.text.in_(variants("btn_lang") | variants("btn_settings")))
 async def menu_lang(message: Message, state: FSMContext) -> None:
     await state.clear()
     await message.answer(t("uz", "choose_lang"), reply_markup=lang_kb(""))
@@ -2615,7 +2692,7 @@ async def _pset_view(uid: int):
     )
     if not channels:
         text += "\n\n⚠️ Post kanallari yo'q. Ularni Owner qo'shadi."
-    rows = [[B("🤖 Avto-postni o'chirish" if auto else "🤖 Avto-postni yoqish", "pset:auto",
+    rows = [[B("⏱ Avto-postni o'chirish" if auto else "⏱ Avto-postni yoqish", "pset:auto",
                style="danger" if auto else "success")]]
     for ch in channels:
         rows.append([B(f"{'✅' if ch.id in chosen else '▫️'} {ch.title}", f"pset:ch:{ch.id}")])
@@ -4062,3 +4139,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+    
